@@ -233,11 +233,18 @@
       .container:not(#monthly):not(#stats) {
         display: none !important;
       }
-      #monthly {
+      /* 印刷時は、hiddenクラスが付いていない（表示されている）タブのみを表示 */
+      #monthly.hidden {
+        display: none !important;
+      }
+      #monthly:not(.hidden) {
         display: block !important;
         background: white !important;
       }
-      #stats {
+      #stats.hidden {
+        display: none !important;
+      }
+      #stats:not(.hidden) {
         display: block !important;
         background: white !important;
       }
@@ -247,7 +254,11 @@
       .print-only {
         display: block !important;
       }
-      #statsPrintContent {
+      /* 統計タブが非表示の場合は統計の印刷コンテンツも非表示 */
+      #stats.hidden #statsPrintContent {
+        display: none !important;
+      }
+      #stats:not(.hidden) #statsPrintContent {
         display: block !important;
         padding: 0 !important;
         margin: 0 !important;
@@ -288,7 +299,12 @@
         margin-bottom: 12px !important;
         padding-bottom: 10px !important;
       }
-      #monthlyReportContent {
+      /* 月次レポートタブが非表示の場合は月次レポートの印刷コンテンツも非表示 */
+      #monthly.hidden ~ #monthlyReportContent,
+      #monthly.hidden #monthlyReportContent {
+        display: none !important;
+      }
+      #monthly:not(.hidden) #monthlyReportContent {
         display: block !important;
         padding: 0 !important;
         margin: 0 !important;
