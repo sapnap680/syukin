@@ -95,7 +95,8 @@
 
       <!-- 成功メッセージ -->
       <div id="successMessage" class="hidden mt-6 p-4 bg-green-50 border-2 border-green-500 text-green-800 rounded-xl text-center font-semibold animate-slide-in">
-        出勤を記録しました！
+        <div class="text-lg mb-2">出勤を記録しました！</div>
+        <div id="monthlyCountMessage" class="text-base"></div>
       </div>
     </div>
   </div>
@@ -272,12 +273,12 @@
         return;
       }
 
-      const route = document.querySelector('input[name="route"]:checked').value;
-      const now = new Date();
+        const route = document.querySelector('input[name="route"]:checked').value;
+        const now = new Date();
 
-      const submitBtn = document.getElementById('submitBtn');
-      submitBtn.disabled = true;
-      submitBtn.textContent = '記録中...';
+        const submitBtn = document.getElementById('submitBtn');
+        submitBtn.disabled = true;
+        submitBtn.textContent = '記録中...';
 
       try {
         const recordData = {
@@ -295,12 +296,50 @@
         await db.collection('records').add(recordData);
         records.push({ id: Date.now(), ...recordData });
 
+        // 今月の出勤回数を計算
+        const utcMs = now.getTime() + now.getTimezoneOffset() * 60000;
+        const jstNow = new Date(utcMs + 9 * 60 * 60000);
+        const year = jstNow.getFullYear();
+        const month = jstNow.getMonth() + 1;
+
+        // 今月の記録を取得
+        const monthlyRecordsSnapshot = await db.collection('records').get();
+        const monthlyRecords = monthlyRecordsSnapshot.docs
+          .map(doc => ({ id: doc.id, ...doc.data() }))
+          .filter(r => {
+            if (!r.date || r.personId !== person.id) return false;
+            const parts = r.date.split('/');
+            if (parts.length !== 3) return false;
+            return parseInt(parts[0]) === year && parseInt(parts[1]) === month;
+          });
+
+        // 同じ日付の記録を重複カウントしないように、日付ごとに最新の記録のみを使用
+        const dateMap = new Map();
+        monthlyRecords.forEach(record => {
+          const date = record.date;
+          if (!dateMap.has(date)) {
+            dateMap.set(date, record);
+          } else {
+            const existing = dateMap.get(date);
+            const existingTime = existing.timestamp?.toDate ? existing.timestamp.toDate().getTime() : 0;
+            const currentTime = record.timestamp?.toDate ? record.timestamp.toDate().getTime() : (record.id || 0);
+            if (currentTime > existingTime) {
+              dateMap.set(date, record);
+            }
+          }
+        });
+        const monthlyCount = dateMap.size;
+
+        // 成功メッセージを更新
+        const monthlyCountMessage = document.getElementById('monthlyCountMessage');
+        monthlyCountMessage.textContent = `今月は${monthlyCount}回来ました`;
+        
         successMessage.classList.remove('hidden');
         this.reset();
 
         setTimeout(() => {
           successMessage.classList.add('hidden');
-        }, 3000);
+        }, 5000);
       } catch (error) {
         console.error('記録エラー:', error);
         alert('記録に失敗しました');
